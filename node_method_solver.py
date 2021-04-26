@@ -4,6 +4,11 @@ adi & isabel
 
 Node Method pseudocode
 
+Todo:
+fix r values
+np iterate
+threshold setting
+var names
 
 Voltage_source = [] # voltage source defined at every node, 0 if no source
 I_s = [] # current sink defined at every node
@@ -38,32 +43,43 @@ def node_method_algo(R,V_s, I_s):
 
 import numpy as np
 
-class NodeMethod(Object):
+class NodeMethod():
     def __init__(self, N, V_s, I_s, R, V_est):
          # setup
          self.V_s = V_s #boolean array to indicate whether a node is a voltage source or not
          self.I_s = I_s #boolear array to indicate whether a node is a current sink or not
 
          self.R = R #array containing adjacent resistances at every node
-         self.V = np.ones(N) * V_est
+         self.V = np.ones((2,2)) * V_est #need to change once we have voltage sources/actual voltage
+         print('self.v', self.V)
          self.N = N
 
          self.I_sink = 1
+         print("init")
 
 
     def solve(self):
-        VBool = np.zeroes(self.N)
-        threshold = .1
-        while !(np.all(self.VBool == 1)):
+        VBool = self.V_s
+
+        threshold = .0001
+        print(np.all(VBool == 1))
+        # for trial in range(50):
+        while ~(np.all(VBool == 1)):
+            print('here', ~(np.all(VBool == 1)))
+
+            print('calc')
             # compute new voltage for every item in array
-            for i in self.N:
-                for j in self.N:
+            for i in range(self.N):
+                for j in range(self.N):
                     if self.V_s[i][j] == 0:
-                        new_voltage_at_i_j = compute_new_voltage(i,j)
+                        print('node', i,j)
+                        new_voltage_at_i_j = self.compute_new_voltage(i,j)
                         if self.V[i][j] - new_voltage_at_i_j < threshold:
                             VBool[i][j] = 1
 
                         self.V[i][j] = new_voltage_at_i_j
+            print('V', self.V)
+            print('VBool',VBool)
 
         return self.V
 
@@ -71,23 +87,43 @@ class NodeMethod(Object):
 
         # set adjacent resistances
         r = list(self.R[i][j]) # makes a copy of list
-        for val in r:
-            if val == float('inf'): val = 1.0
-
-        r = tuple(r)
+        print('r',r)
 
         # set adjacent voltages
-        v = ((self.V[i+1][j]) if i+1<self.N else 0.0, (self.V[i][j+1]) if j+1<self.N else 0.0, (self.V[i-1][j]) if i-1>=0 else 0.0, (self.V[i][j-1]) if j-1>=0 else 0.0)
-
+        v = ((self.V[i-1][j]) if i-1>=0 else 0.0, (self.V[i][j+1]) if j+1<self.N else 0.0, (self.V[i+1][j]) if i+1<self.N else 0.0, (self.V[i][j-1]) if j-1>=0 else 0.0)
+        print('adjusted v', v)
         #resistances multipliedself.
-        r234 = r[1]*r[2]*r[3]
-        r134 = r[0]*r[2]*r[3]
-        r124 = r[0]*r[1]*r[3]
-        r123 = r[0]*r[1]*r[2]
+        r123 = r[1]*r[2]*r[3]
+        r023 = r[0]*r[2]*r[3]
+        r013 = r[0]*r[1]*r[3]
+        r012 = r[0]*r[1]*r[2]
 
-        final_node_voltage = (v[0]*r234 + v[1]*r134 + v[2]*r124 + v[3]*r123 - self.I_sink*self.I_s[i][j]*r[0]*r[1]*r[2]*r[3])/(r234+r134+r124+r123)
+        print('current at node',self.I_s[i][j])
+        print(r123,r023,r013,r012)
+        res = [r123,r023,r013,r012]
+
+        denom = 0
+        for val in range(4):
+            print(val)
+            if v[val] != 0.0: denom+=res[val]
+        print(denom)
+
+        final_node_voltage = (v[0]*res[0] + v[1]*res[1] + v[2]*res[2] + v[3]*res[3] - self.I_sink*self.I_s[i][j]*r[0]*r[1]*r[2]*r[3])/denom
+
 
         return final_node_voltage
 
-if "__name__" == "__main__":
-    print("testing node_method")
+if __name__ == "__main__":
+    print("testing node_method with 2x2 array")
+    print("-------------------------------------")
+
+    res = 5 # 5 ohms default resistance
+    arr_size = 2
+    Vdd = 5
+    V_s = np.array([[1, 0], [0, 1]])
+    I_s = np.array([[0, 1], [1, 0]])
+    R = np.array([[(1.0, res, res, 1.0), (1.0, 1.0, res, res)], [(res, res, 1.0, 1.0), (res, 1.0, 1.0, res)]])
+
+    t = NodeMethod(arr_size, V_s, I_s, R, Vdd)
+    print(t.solve())
+    print("-------------------------------------")
