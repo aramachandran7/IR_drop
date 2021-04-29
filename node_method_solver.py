@@ -197,7 +197,7 @@ def build_array(N, voltage_type, resistance_type, spacing=2, R=5):
         # generate random cluster corners & sizes based on normal distribution around optimal cluster size & number
 
         # general cluster metrics
-        cluster_sidelength = .25 #  * N cluster sidelength in terms of N
+        cluster_sidelength = .2 #  * N cluster sidelength in terms of N
         total_cluster_area = .33 # *N**2 area of total nodes covered by clusters
         LOW_R = R/3.0
 
@@ -295,7 +295,7 @@ def overlap(corner, side_length, clusters, N):
     for cluster in clusters:
         if corner == cluster[0]:
             return True
-        if corner[0] + side_length>= cluster[0][0] and corner[1]+side_length >= cluster[0][1]:
+        if (corner[0] + side_length) >= (cluster[0][0]-1) and (corner[1]+side_length) >= (cluster[0][1]-1):
             return True
         return False
 
