@@ -44,17 +44,17 @@ def node_method_algo(R,V_s, I_s):
 import numpy as np
 
 class NodeMethod():
-    def __init__(self, N, V_s, I_s, R, V_est):
+    def __init__(self, N, V_s, R, V_est = 5, I_sink = 1):
          # setup
          self.V_s = V_s #boolean array to indicate whether a node is a voltage source or not
-         self.I_s = I_s #boolear array to indicate whether a node is a current sink or not
+         # self.I_s = I_s #boolear array to indicate whether a node is a current sink or not
 
          self.R = R #array containing adjacent resistances at every node
          self.V = np.ones((2,2)) * V_est #need to change once we have voltage sources/actual voltage
          print('self.v', self.V)
          self.N = N
 
-         self.I_sink = 1
+         self.I_sink = I_sink
          print("init")
 
 
@@ -98,7 +98,7 @@ class NodeMethod():
         r013 = r[0]*r[1]*r[3]
         r012 = r[0]*r[1]*r[2]
 
-        print('current at node',self.I_s[i][j])
+        print('current at node',(self.I_s[i][j] ^ 1))
         print(r123,r023,r013,r012)
         res = [r123,r023,r013,r012]
 
@@ -108,22 +108,122 @@ class NodeMethod():
             if v[val] != 0.0: denom+=res[val]
         print(denom)
 
-        final_node_voltage = (v[0]*res[0] + v[1]*res[1] + v[2]*res[2] + v[3]*res[3] - self.I_sink*self.I_s[i][j]*r[0]*r[1]*r[2]*r[3])/denom
-
+        final_node_voltage = (v[0]*res[0] + v[1]*res[1] + v[2]*res[2] + v[3]*res[3] - self.I_sink*((self.V_s[i][j])^1)*r[0]*r[1]*r[2]*r[3])/denom
 
         return final_node_voltage
 
+
+
+def build_array(N, voltage_type, resistance_type, spacing=2, R=5):
+    ''' Builds test cases
+    Inputs: N: the size of the NxN array
+            voltage_type: either random, uniform, corners. Defines the position of the voltage sources
+            spacing: for 'uniform' type, indicates how often there is a voltage source
+    Outputs: 4 arguments, N, V_s, R
+    '''
+
+    NULL_R = 1.0 # Null resistance
+    DEV = 1.0 # deviation for gaussian distribution
+    # handle voltage_type
+
+    if voltage_type == 'random':
+        pass
+
+    elif voltage_type == 'uniform':
+        array = [[]]
+        a = np.zeros(spacing-1)
+        a = np.insert(a, 0,1)
+        array = np.tile(a, N//spacing)
+        print('a:',a)
+        print('array:', array)
+        if N % spacing != 0:
+            array = np.append(array, a[0:N%spacing])
+        prev_row = array
+        for i in range(1,N):
+            print(i)
+            next_row = np.roll(prev_row, 1)
+            print('next row:', next_row, '=====')
+            array = np.vstack((array, next_row)) # append?
+            print(array)
+            prev_row = next_row
+
+        V_s = array
+
+    elif voltage_type == 'corners':
+        # generate Voltage source matrix V_s for corner type
+
+        V_s = np.tile([0 for x in range(N)], [N,1])
+        V_s[0][0] = 1
+        V_s[-1][-1] = 1
+        V_s[0][-1] = 1
+        V_s[-1][0] = 1
+
+        # generate Resistance matrix
+
+    # handle resistance_type
+
+    if resistance_type == 'uniform':
+        # run with all resistances being the same
+        r_arr = []
+        for row in range(N):
+            r_arr.append([])
+            for col in range(N):
+                r_arr[row].append((NULL_R if (row == 0) else R, NULL_R if ((col+1)%N==0) else R, NULL_R if ((row+1)%N==0) else R, NULL_R if (col == 0) else R))
+
+                # if (col == 0):
+                #     # set the left value to 0
+                # if ((col+1)%N==0):
+                #     # set right to 0
+                # if (row == 0):
+                #     # set top value to 0
+                # if ((row+1)%N==0):
+                # set bottom value to 0
+
+        resistance_matrix = np.array(r_arr)
+
+
+    elif resistance_type == 'gaussian':
+        # run with all resistances being a gaussian distribution around R
+
+        r_arr = []
+        for row in range(N):
+            r_arr.append([])
+            for col in range(N):
+                r_arr[row].append((
+                    NULL_R if (row == 0) else np.random.normal(R, DEV),
+                    NULL_R if ((col+1)%N==0) else np.random.normal(R, DEV),
+                    NULL_R if ((row+1)%N==0) else np.random.normal(R, DEV),
+                    NULL_R if (col == 0) else np.random.normal(R, DEV)
+                ))
+
+        resistance_matrix = np.array(r_arr)
+
+
+
+
+
+    return N, V_s, resistance_matrix
+
+
+
 if __name__ == "__main__":
-    print("testing node_method with 2x2 array")
-    print("-------------------------------------")
 
-    res = 5 # 5 ohms default resistance
-    arr_size = 2
-    Vdd = 5
-    V_s = np.array([[1, 0], [0, 1]])
-    I_s = np.array([[0, 1], [1, 0]])
-    R = np.array([[(1.0, res, res, 1.0), (1.0, 1.0, res, res)], [(res, res, 1.0, 1.0), (res, 1.0, 1.0, res)]])
-
-    t = NodeMethod(arr_size, V_s, I_s, R, Vdd)
-    print(t.solve())
-    print("-------------------------------------")
+    N, voltage_source_matrix, resistance_matrix = build_array(N=4, voltage_type='uniform', resistance_type='gaussian', spacing=3)
+    print('VSOURCEMATRIX:',voltage_source_matrix)
+    # print(resistance_matrix)
+    # print("testing node_method with 2x2 array")
+    # print("-------------------------------------")
+    #
+    # res = 5 # 5 ohms default resistance
+    # arr_size = 2
+    # Vdd = 5
+    # V_s = np.array([[1, 0], [0, 1]])
+    # # I_s = np.array([[0, 1], [1, 0]])
+    # R = np.array([[(1.0, res, res, 1.0), (1.0, 1.0, res, res)], [(res, res, 1.0, 1.0), (res, 1.0, 1.0, res)]])
+    #
+    # t = NodeMethod(arr_size, V_s, R, V_est = Vdd)
+    # print(t.solve())
+    #
+    #
+    # print("testing node_method with 3x3 array")
+    # print("-------------------------------------")
