@@ -1,81 +1,79 @@
-def build_array(N, voltage_type, resistance_type, current_type, spacing=2, R=5, ):
+"""
+Class to build matrices
+"""
+import numpy as np
+import random
+
+class BuildMatrix():
     ''' Builds test cases
     Inputs: N: the size of the NxN array
             voltage_type: either random, uniform, corners. Defines the position of the voltage sources
             spacing: for 'uniform' type, indicates how often there is a voltage source
     Outputs: 4 arguments, N, vltg_src_matrix, R
     '''
+    def __init__(self, N):
+        self.N = N
+        self.NULL_R = 1.0 # Null resistance
+        self.DEV = 1.0 # deviation for gaussian distribution
 
-    NULL_R = 1.0 # Null resistance
-    DEV = 1.0 # deviation for gaussian distribution
-    DEV_SMALL = R/10.0
-    # handle voltage_type
+    def generate_default(self):
+        """Create
+        """
+        v = self.build_voltage_corners()
+        i = self.build_current_uniform(v)
+        r = self.build_resistance_uniform()
+        return v, i, r
 
-    if voltage_type == 'random':
-        vltg_src_matrix = np.random.randint(2, size=(N,N))
 
-    elif voltage_type == 'uniform':
-        spacing += 1
-        vltg_src_matrix = np.zeros((N,N))
+    def build_voltage_random(self):
+        vltg_src_matrix = np.random.randint(2, size=(self.N,self.N), dtype=np.bool)
+        return vltg_src_matrix
+
+    def build_voltage_uniform(self, spacing=2):
+        spacing += 1 #makes it so that spacing is what you'd expect
+        vltg_src_matrix = np.zeros((self.N,self.N), dtype=np.bool)
         counter = 0
-        for index in range(N**2):
+        for index in range(self.N**2):
             if counter == 0:
                 # compute index, set value to 1
-                vltg_src_matrix[(index//N)][index%N] = 1
+                if (index//self.N) % spacing != 0:
+                    vltg_src_matrix[(index//self.N)][index%self.N] = 1
 
             counter = (counter + 1)% spacing
+        return vltg_src_matrix
 
-        # array = [[]]
-        # a = np.zeros(spacing-1)
-        # a = np.insert(a, 0,1)
-        # array = np.tile(a, N//spacing)
-        # print('a:',a)
-        # print('array:', array)
-        # if N % spacing != 0:
-        #     array = np.append(array, a[0:N%spacing])
-        # prev_row = array
-        # for i in range(1,N):
-        #     print(i)
-        #     next_row = np.roll(prev_row, 1)
-        #     print('next row:', next_row, '=====')
-        #     array = np.vstack((array, next_row)) # append?
-        #     print(array)
-        #     prev_row = next_row
-        #
-        # vltg_src_matrix = array
-
-    elif voltage_type == 'corners':
+    def build_voltage_corners(self):
         # generate Voltage source matrix vltg_src_matrix for corner type
-        vltg_src_matrix = np.zeros((N,N))
+        vltg_src_matrix = np.zeros((self.N,self.N), dtype=np.bool)
         # vltg_src_matrix = np.tile([0 for x in range(N)], [N,1])
         vltg_src_matrix[0][0] = 1
         vltg_src_matrix[-1][-1] = 1
         vltg_src_matrix[0][-1] = 1
         vltg_src_matrix[-1][0] = 1
 
-        # generate Resistance matrix
+        return vltg_src_matrix
 
-    # handle resistance_type
 
-    if resistance_type == 'uniform':
+    def build_resistance_uniform(self, R=5):
         # run with all resistances being the same
         r_arr = []
-        for row in range(N):
+        for row in range(self.N):
             r_arr.append([])
-            for col in range(N):
-                r_arr[row].append((NULL_R if (row == 0) else R, NULL_R if ((col+1)%N==0) else R, NULL_R if ((row+1)%N==0) else R, NULL_R if (col == 0) else R))
+            for col in range(self.N):
+                r_arr[row].append((self.NULL_R if (row == 0) else R, self.NULL_R if ((col+1)%self.N==0) else R, self.NULL_R if ((row+1)%self.N==0) else R, self.NULL_R if (col == 0) else R))
 
         resistance_matrix = np.array(r_arr)
+        return resistance_matrix
 
-    elif resistance_type == 'gaussian':
-        # run with all resistances being a gaussian distribution around R
-        r_arr = gaussian_resistance(N, R, NULL_R, DEV, DEV_SMALL_BOOLEAN=False)
 
-        resistance_matrix = np.array(r_arr)
+    def build_resistance_gaussian(self, R = 5):
+            # run with all resistances being a gaussian distribution around R
+            r_arr = self.normal_resistance_distribution(R, DEV_SMALL_BOOLEAN=False)
 
-    elif resistance_type == 'cluster':
+            return np.array(r_arr)
 
-        r_arr = gaussian_resistance(N, R, NULL_R, DEV, DEV_SMALL_BOOLEAN=True)
+    def build_resistance_cluster(self, R=5):
+        r_arr = self.normal_resistance_distribution(R, DEV_SMALL_BOOLEAN=True)
 
         # generate random cluster corners & sizes based on normal distribution around optimal cluster size & number
 
@@ -89,20 +87,20 @@ def build_array(N, voltage_type, resistance_type, current_type, spacing=2, R=5, 
 
         clusters = []
         for i in range(cluster_number):
-            side_length = int(np.random.normal(cluster_sidelength*N, cluster_sidelength*N*.4))
+            side_length = int(np.random.normal(cluster_sidelength*self.N, cluster_sidelength*self.N*.4))
             if side_length == 0:
                 side_length += 1
 
             # generate and check top left corner
-            corner = (random.randint(0,N-1), random.randint(0,N-1))
+            corner = (random.randint(0,self.N-1), random.randint(0,self.N-1))
 
-            while overlap(corner, side_length, clusters, N): # if theres overlap return true
-                corner = (random.randint(0,N-1), random.randint(0,N-1))
+            while self.overlap(corner, side_length, clusters): # if theres overlap return true
+                corner = (random.randint(0,self.N-1), random.randint(0,self.N-1))
 
             clusters.append((corner,side_length))
 
         print('clusters:\n', clusters)
-        visualize_clusters(N, clusters)
+        self.visualize_clusters(clusters)
         # walk through all clusters, and alter resistance_matrix
         for cluster in clusters:
             # walk through all nodes, setting appropriate values to low resistances
@@ -127,63 +125,97 @@ def build_array(N, voltage_type, resistance_type, current_type, spacing=2, R=5, 
                             )
 
 
-        resistance_matrix = np.array(r_arr)
+            resistance_matrix = np.array(r_arr)
 
-    if current_type == 'uniform':
+        return resistance_matrix
 
-        current_sink_matrix = (self.vltg_src_matrix[i][j])^1)
+    def build_current_uniform(self, vltg_src_matrix, current_val):
+        sinks = np.invert(vltg_src_matrix)
+        current_sink_matrix = sinks * current_val
+        return current_sink_matrix
 
-    if current_type == 'uniform'
+    def build_current_rand(self, vltg_src_matrix, max):
+        sinks = np.invert(vltg_src_matrix)
+        rands = np.random.rand(self.N, self.N)
+        current_sink_matrix = sinks * rands * max
+        return current_sink_matrix
 
+    def build_current_dist(self, vltg_src_matrix, currents : list, distribution: list):
+        # multiply, add together into mega list, shuffle randomly, resize, then multiply by sinks
+        sinks = np.invert(vltg_src_matrix)
 
+        list_currents = []
 
-    return N, vltg_src_matrix, resistance_matrix, I_sink_matrix
+        for i, current in enumerate(currents):
+            list_currents += [current for x in range(int(distribution[i]*(self.N**2)))]
+        print(len(list_currents), self.N**2)
+        print(list_currents)
+        np.random.shuffle(list_currents)
+        print(list_currents)
+        current_matrix = np.resize(list_currents, (self.N, self.N))
 
-def gaussian_resistance(N, R,NULL_R, DEV, DEV_SMALL_BOOLEAN=False):
+        print(current_matrix)
+        final =  current_matrix*sinks
 
-    if DEV_SMALL_BOOLEAN:
-        DEV /= 3.0
+        return final
 
-    r_arr = []
-    for row in range(N):
-        r_arr.append([])
-        for col in range(N):
-            r_arr[row].append((
-                NULL_R if (row == 0) else r_arr[row-1][col][2],
-                NULL_R if ((col+1)%N==0) else np.random.normal(R, DEV),
-                NULL_R if ((row+1)%N==0) else np.random.normal(R, DEV),
-                NULL_R if (col == 0) else r_arr[row][col-1][1]
-            ))
+    def normal_resistance_distribution(self, R, DEV_SMALL_BOOLEAN=False):
+        if DEV_SMALL_BOOLEAN:
+            self.DEV /= 3.0
 
-    return r_arr
+        r_arr = []
+        for row in range(self.N):
+            r_arr.append([])
+            for col in range(self.N):
+                r_arr[row].append((
+                    self.NULL_R if (row == 0) else r_arr[row-1][col][2],
+                    self.NULL_R if ((col+1)%self.N==0) else np.random.normal(R, self.DEV),
+                    self.NULL_R if ((row+1)%self.N==0) else np.random.normal(R, self.DEV),
+                    self.NULL_R if (col == 0) else r_arr[row][col-1][1]
+                ))
 
-def visualize_clusters(N, clusters):
-    arr = np.zeros((N,N))
+        self.DEV *= 3.0
+        return r_arr
 
-    for cluster in clusters:
-        # walk through all nodes, setting appropriate values to low resistances
-        corner = cluster[0]
-        side_length = cluster[1]
+    def visualize_clusters(self,clusters):
+        arr = np.zeros((self.N,self.N))
 
-        row_min = corner[0]
-        row_max = corner[0]+side_length
-        col_min = corner[1]
-        col_max = corner[1]+side_length
+        for cluster in clusters:
+            # walk through all nodes, setting appropriate values to low resistances
+            corner = cluster[0]
+            side_length = cluster[1]
 
-        for row in range(row_min,row_max+1):
-            for col in range(col_min, col_max+1):
-                arr[row][col] = 1
+            row_min = corner[0]
+            row_max = corner[0]+side_length
+            col_min = corner[1]
+            col_max = corner[1]+side_length
 
-    print('CLUSTERS, MAPPED\n', arr)
+            for row in range(row_min,row_max+1):
+                for col in range(col_min, col_max+1):
+                    arr[row][col] = 1
 
-def overlap(corner, side_length, clusters, N):
-    # return true if there is any of (overlap with another cluster at all, or out of bounds at all), false otherwise
-    if (corner[0] + side_length>= N) or (corner[1]+side_length >= N):
-        return True
+        print('CLUSTERS, MAPPED\n', arr)
 
-    for cluster in clusters:
-        if corner == cluster[0]:
+    def overlap(self, corner, side_length, clusters):
+        # return true if there is any of (overlap with another cluster at all, or out of bounds at all), false otherwise
+        if (corner[0] + side_length>= self.N) or (corner[1]+side_length >= self.N):
             return True
-        if (corner[0] + side_length) >= (cluster[0][0]-1) and (corner[1]+side_length) >= (cluster[0][1]-1):
-            return True
-        return False
+
+        for cluster in clusters:
+            if corner == cluster[0]:
+                return True
+            if (corner[0] + side_length) >= (cluster[0][0]-1) and (corner[1]+side_length) >= (cluster[0][1]-1): # checks for one way overlap, not the other way i'm a genius
+                return True
+            return False
+
+
+if __name__ == "__main__":
+    builder = BuildMatrix(10)
+    v = builder.build_voltage_random()
+    i = builder.build_current_dist(v, [1,2,3], [.25,.25,.5])
+    print('v\n', v)
+    print('i\n', i)
+    # v,i,r = builder.generate_default()
+    # print('v\n', v)
+    # print('i\n', i)
+    # print('r\n', r)
