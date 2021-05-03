@@ -16,12 +16,12 @@ class BuildMatrix():
         self.NULL_R = 1.0 # Null resistance
         self.DEV = 1.0 # deviation for gaussian distribution
 
-    def generate_default(self):
+    def generate_default(self, R=5, current_val=1):
         """Create
         """
         v = self.build_voltage_corners()
-        i = self.build_current_uniform(v)
-        r = self.build_resistance_uniform()
+        i = self.build_current_uniform(v, current_val)
+        r = self.build_resistance_uniform(R)
         return v, i, r
 
 
@@ -129,7 +129,7 @@ class BuildMatrix():
 
         return resistance_matrix
 
-    def build_current_uniform(self, vltg_src_matrix, current_val):
+    def build_current_uniform(self, vltg_src_matrix, current_val=1):
         sinks = np.invert(vltg_src_matrix)
         current_sink_matrix = sinks * current_val
         return current_sink_matrix
@@ -148,13 +148,9 @@ class BuildMatrix():
 
         for i, current in enumerate(currents):
             list_currents += [current for x in range(int(distribution[i]*(self.N**2)))]
-        print(len(list_currents), self.N**2)
-        print(list_currents)
         np.random.shuffle(list_currents)
-        print(list_currents)
         current_matrix = np.resize(list_currents, (self.N, self.N))
 
-        print(current_matrix)
         final =  current_matrix*sinks
 
         return final

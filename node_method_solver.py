@@ -2,115 +2,73 @@
 DSA final project
 adi & isabel
 
-Node Method pseudocode
-
-Todo:
-fix r values
-np iterate
-threshold setting
-var names
-
-Voltage_source = [] # voltage source defined at every node, 0 if no source
-I_s = [] # current sink defined at every node
-specific current sinks can be specified and randomly assigned based off a uniform or custom allocation
-    i.e. [3 amps, 2 amps, .5 amps, 6 amps]
-         [20, 10, 5, 2]
-
-Current_sink = []
-PV = [] #previous voltage matrix
-V = [] # returns voltage matrix
-R = [
-    (inf, 10, 3, inf),
-    (inf, 5, 9, 9),
-    ] #connection bt all adjacent nodes (0,1,2,3)
-
-def node_method_algo(R,vltg_src_matrix, I_s):
-    PV = starting voltage value at every node (?)
-    k = 0 # iteration_number
-    threshold = value much less than 1
-
-    # # else:
-    #     k = k+1
-    #     for i = 1 to len(Voltage_source):
-    #         V[k][i] =
-    # if PV - V < threshold: #for every node in the matrix
-    #     return
-
-    while(boolean_matrix isn't all true):
-        # walk thru every node in voltage matrix, compute new value, set boolean matrix value
-        for i in V:
-            for j in V:
-                new_voltage_at_i_j = compute_new_voltage()
-                boolean_matrix[i][j] = (V[i][j] -new_voltage_at_i_j)<threshold
-    return V
+todo:
+think about AC
+implement row method
 """
 
 import numpy as np
 import random
+from BuildMatrix import BuildMatrix
 
 class NodeMethod():
-    def __init__(self, N, vltg_src_matrix, R, I_sink, V_est = 5):
+    def __init__(self, N, vltg_src_matrix, I_sink, R, V_est = 5, threshold = .0001):
          # setup
          self.vltg_src_matrix = vltg_src_matrix #boolean array to indicate whether a node is a voltage source or not
-         # self.I_s = I_s #boolear array to indicate whether a node is a current sink or not
-
          self.R = R #array containing adjacent resistances at every node
-         self.V = np.ones((2,2)) * V_est #need to change once we have voltage sources/actual voltage
-         print('self.v', self.V)
          self.N = N
-
+         self.V = np.ones((self.N, self.N)) * V_est #need to change once we have voltage sources/actual voltage
          self.I_sink = I_sink # array containing current sink values, structured i,j in an NxN matrix
-         print("init")
-
+         self.threshold = threshold
 
     def solve(self):
         VBool = self.vltg_src_matrix
-
-        threshold = .0001
-        print(np.all(VBool == 1))
         # for trial in range(50):
+        runs = 0
         while ~(np.all(VBool == 1)):
-            print('here', ~(np.all(VBool == 1)))
+            # print('here', ~(np.all(VBool == 1)))
+            runs += 1
+            if (runs % 100 == 0):
+                print('runs: ', runs)
+                temp_inverse = np.invert(VBool)
+                print('nodes left to reach threshold: ', np.sum(temp_inverse), '/', self.N*self.N)
 
-            print('calc')
             # compute new voltage for every item in array
             for i in range(self.N):
                 for j in range(self.N):
                     if self.vltg_src_matrix[i][j] == 0:
-                        print('node', i,j)
                         new_voltage_at_i_j = self.compute_new_voltage(i,j)
-                        if self.V[i][j] - new_voltage_at_i_j < threshold:
+                        if self.V[i][j] - new_voltage_at_i_j < self.threshold:
                             VBool[i][j] = 1
 
                         self.V[i][j] = new_voltage_at_i_j
-            print('V', self.V)
-            print('VBool',VBool)
 
+        print('total runs: ', runs)
         return self.V
 
     def compute_new_voltage(self, i,j):
 
         # set adjacent resistances
         r = list(self.R[i][j]) # makes a copy of list
-        print('r',r)
 
         # set adjacent voltages
-        v = ((self.V[i-1][j]) if i-1>=0 else 0.0, (self.V[i][j+1]) if j+1<self.N else 0.0, (self.V[i+1][j]) if i+1<self.N else 0.0, (self.V[i][j-1]) if j-1>=0 else 0.0)
-        print('adjusted v', v)
+        v1 = (self.V[i-1][j]) if i-1>=0 else 0.0
+        # print('HERE', self.V[i][j+1])
+        v2 = (self.V[i][j+1]) if j+1<self.N else 0.0
+        v3 = (self.V[i+1][j]) if i+1<self.N else 0.0
+        v4 = (self.V[i][j-1]) if j-1>=0 else 0.0
+        v = (v1,v2,v3,v4)
         #resistances multipliedself.
         r123 = r[1]*r[2]*r[3]
         r023 = r[0]*r[2]*r[3]
         r013 = r[0]*r[1]*r[3]
         r012 = r[0]*r[1]*r[2]
 
-        print(r123,r023,r013,r012)
         res = [r123,r023,r013,r012]
 
         denom = 0
         for val in range(4):
-            print(val)
             if v[val] != 0.0: denom+=res[val]
-        print(denom)
 
         final_node_voltage = (v[0]*res[0] + v[1]*res[1] + v[2]*res[2] + v[3]*res[3] - self.I_sink[i][j]*r[0]*r[1]*r[2]*r[3])/denom
 
@@ -121,10 +79,17 @@ class NodeMethod():
 
 if __name__ == "__main__":
 
-    N, voltage_source_matrix, resistance_matrix = build_array(N=10, voltage_type='uniform', resistance_type='cluster', spacing=3)
-    print('VSOURCEMATRIX:')
-    print(voltage_source_matrix)
-    print(resistance_matrix)
+    size = 50
+    builder = BuildMatrix(size)
+    v,i,r = builder.generate_default(.1, 1)
+
+
+    n = NodeMethod(size,v,i,r, threshold=.001)
+    voltages = n.solve()
+
+
+    print('NodeMethod Output:')
+    print(voltages)
     # print("-------------------------------------")
     #
     # res = 5 # 5 ohms default resistance
