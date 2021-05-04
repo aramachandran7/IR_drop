@@ -21,7 +21,7 @@ class NodeMethod():
          self.N = N
          self.voltage_matrix = np.ones((self.N, self.N)) * Vdd #need to change once we have voltage sources/actual voltage
          self.current_sink_matrix = current_sink_matrix # array containing current sink values, structured i,j in an NxN matrix
-         self.threshold = threshold
+         self.threshold = threshold #value to determine whether a voltage has settled or not, << 1
 
     def solve(self):
         """
@@ -29,7 +29,7 @@ class NodeMethod():
         precision is reached at all node voltages.
         """
 
-        # setup looping
+        # set up looping
         threshold_reached = self.vltg_src_matrix
         runs = 0
 
@@ -94,16 +94,18 @@ class NodeMethod():
 
 if __name__ == "__main__":
 
-    size = 10
+    size = 7
     builder = BuildMatrix(size)
-    v,i,r = builder.generate_default(.1, 1)
+    print(builder.build_voltage_center())
 
-    node_method = NodeMethod(size,v,i,r, threshold=.001)
-    voltages = node_method.solve()
-
-    visualizer = Visual()
-    visualizer.visualize_node_voltage(voltages)
-
-
-    print('NodeMethod Output:')
-    print(voltages)
+    # v,i,r = builder.generate_default(.1, 1)
+    #
+    # node_method = NodeMethod(size,v,i,r, threshold=.001)
+    # voltages = node_method.solve()
+    #
+    # visualizer = Visual()
+    # visualizer.visualize_node_voltage(voltages)
+    #
+    #
+    # print('NodeMethod Output:')
+    # print(voltages)

@@ -17,7 +17,9 @@ class BuildMatrix():
         self.DEV = 1.0 # deviation for gaussian distribution
 
     def generate_default(self, R=5, current_val=1):
-        """Create
+        """Create default voltage, current, and resistance array.
+        Inputs: R, resistance in ohms
+                current_val, value of each current sink
         """
         v = self.build_voltage_corners()
         i = self.build_current_uniform(v, current_val)
@@ -26,10 +28,30 @@ class BuildMatrix():
 
 
     def build_voltage_random(self):
+        """Creates a voltage matrix filled with random 1s and 0s"""
         vltg_src_matrix = np.random.randint(2, size=(self.N,self.N), dtype=np.bool)
         return vltg_src_matrix
 
     def build_voltage_uniform(self, spacing=2):
+        """Creates a voltage matrix that is a grid with with voltage nodes spaced apart as vertically and horizontally (not on the diagonal)
+        Input: spacing, an int defining the space in between two nodes
+        Ex:
+        Spacing 1, N = 6
+        [[0 0 0 0 0 0]
+         [1 0 1 0 1 0]
+         [0 0 0 0 0 0]
+         [1 0 1 0 1 0]
+         [0 0 0 0 0 0]
+         [1 0 1 0 1 0]]
+        Spacing 3, N = 7
+        [[0 0 0 0 0 0 0]
+         [0 1 0 0 0 1 0]
+         [0 0 1 0 0 0 1]
+         [0 0 0 1 0 0 0]
+         [0 0 0 0 0 0 0]
+         [0 1 0 0 0 1 0]
+         [0 0 1 0 0 0 1]]
+        """
         spacing += 1 #makes it so that spacing is what you'd expect
         vltg_src_matrix = np.zeros((self.N,self.N), dtype=np.bool)
         counter = 0
@@ -43,7 +65,9 @@ class BuildMatrix():
         return vltg_src_matrix
 
     def build_voltage_corners(self):
-        # generate Voltage source matrix vltg_src_matrix for corner type
+        """Generate voltage source matrix vltg_src_matrix for corner type.
+        Each voltage source is located at each of the four corners of the matrix.
+        """
         vltg_src_matrix = np.zeros((self.N,self.N), dtype=np.bool)
         # vltg_src_matrix = np.tile([0 for x in range(N)], [N,1])
         vltg_src_matrix[0][0] = 1
@@ -53,9 +77,20 @@ class BuildMatrix():
 
         return vltg_src_matrix
 
+    def build_voltage_center(self):
+        """Crete voltage array where there is one central voltage node.
+        Ideal for smaller matrices, or those where there is not a lot of current draw."""
+        vltg_src_matrix = np.zeros((self.N,self.N), dtype=np.bool)
+        # vltg_src_matrix = np.tile([0 for x in range(N)], [N,1])
+        vltg_src_matrix[self.N//2][self.N//2] = 1
+
+        return vltg_src_matrix
+
 
     def build_resistance_uniform(self, R=5):
-        # run with all resistances being the same
+        """Create a resistance matrix with all resistances being the same
+        Inputs: R, resistance in ohms
+        """
         r_arr = []
         for row in range(self.N):
             r_arr.append([])
@@ -67,12 +102,18 @@ class BuildMatrix():
 
 
     def build_resistance_gaussian(self, R = 5):
-            # run with all resistances being a gaussian distribution around R
-            r_arr = self.normal_resistance_distribution(R, DEV_SMALL_BOOLEAN=False)
+        """Build a resistance matrix with all resistances being a gaussian distribution around R
+        Inputs: R, resistance in ohms, the average value of each of the edges
+        """
+        r_arr = self.normal_resistance_distribution(R, DEV_SMALL_BOOLEAN=False)
 
-            return np.array(r_arr)
+        return np.array(r_arr)
 
     def build_resistance_cluster(self, R=5):
+        """ Builds a cluster of resistances
+
+
+        """
         r_arr = self.normal_resistance_distribution(R, DEV_SMALL_BOOLEAN=True)
 
         # generate random cluster corners & sizes based on normal distribution around optimal cluster size & number
@@ -130,18 +171,26 @@ class BuildMatrix():
         return resistance_matrix
 
     def build_current_uniform(self, vltg_src_matrix, current_val=1):
+        """Create a current source matrix with equivalent current values"""
         sinks = np.invert(vltg_src_matrix)
         current_sink_matrix = sinks * current_val
         return current_sink_matrix
 
     def build_current_rand(self, vltg_src_matrix, max):
+        """Create a current source matrix with random current values between 0 and the maximum
+        Input: vltg_src_matrix, the voltage source matrix for the graph
+               max: the maximum current value
+        """
         sinks = np.invert(vltg_src_matrix)
         rands = np.random.rand(self.N, self.N)
         current_sink_matrix = sinks * rands * max
         return current_sink_matrix
 
     def build_current_dist(self, vltg_src_matrix, currents : list, distribution: list):
-        # multiply, add together into mega list, shuffle randomly, resize, then multiply by sinks
+        """Create current source matrix from current values given in currents with distribution
+        Inputs: currents, a list of each current value that should be present in the final matrix, in amps
+                distribution, a list containing the percentage value that each current value should be present in the matrix
+        """
         sinks = np.invert(vltg_src_matrix)
 
         list_currents = []
