@@ -11,6 +11,7 @@ think about (colorful!) visualizations
 import numpy as np
 import random
 from BuildMatrix import BuildMatrix
+from visuals import Visual
 
 class NodeMethod():
     def __init__(self, N, vltg_src_matrix, current_sink_matrix, resistance_matrix, Vdd = 5, threshold = .0001):
@@ -28,20 +29,29 @@ class NodeMethod():
         precision is reached at all node voltages.
         """
 
+        # setup looping
         threshold_reached = self.vltg_src_matrix
-        # for trial in range(50):
         runs = 0
+
         while ~(np.all(threshold_reached == 1)):
 
+            # with np.nditer(self.vltg_src_matrix, op_flags=['readwrite'],flags=['multi_index']) as iteratror_obj:
             # compute new voltage for every item in array
+
             for i in range(self.N):
                 for j in range(self.N):
-                    if self.vltg_src_matrix[i][j] == 0:
-                        new_voltage_at_i_j = self.compute_new_voltage(i,j)
-                        if self.voltage_matrix[i][j] - new_voltage_at_i_j < self.threshold:
+                # for prev_node_voltage in iteratror_obj:
+                    # i = iteratror_obj.multi_index[0] # row
+                    # j = iteratror_obj.multi_index[1] # col
+
+                    if self.vltg_src_matrix[i][j] == 0: # ensure there is no source at this location
+
+                        new_node_voltage = self.compute_new_voltage(i,j)
+
+                        if abs(self.voltage_matrix[i][j] - new_node_voltage) < self.threshold:
                             threshold_reached[i][j] = 1
 
-                        self.voltage_matrix[i][j] = new_voltage_at_i_j
+                        self.voltage_matrix[i][j] = new_node_voltage
 
             # Logging to stdout code
             runs += 1
@@ -82,33 +92,18 @@ class NodeMethod():
         return final_node_voltage
 
 
-
-
 if __name__ == "__main__":
 
     size = 10
     builder = BuildMatrix(size)
     v,i,r = builder.generate_default(.1, 1)
 
-
     node_method = NodeMethod(size,v,i,r, threshold=.001)
     voltages = node_method.solve()
+
+    visualizer = Visual()
+    visualizer.visualize_node_voltage(voltages)
 
 
     print('NodeMethod Output:')
     print(voltages)
-    # print("-------------------------------------")
-    #
-    # res = 5 # 5 ohms default resistance
-    # arr_size = 2
-    # Vdd = 5
-    # vltg_src_matrix = np.array([[1, 0], [0, 1]])
-    # # I_s = np.array([[0, 1], [1, 0]])
-    # R = np.array([[(1.0, res, res, 1.0), (1.0, 1.0, res, res)], [(res, res, 1.0, 1.0), (res, 1.0, 1.0, res)]])
-    #
-    # t = NodeMethod(arr_size, vltg_src_matrix, R, V_est = Vdd)
-    # print(t.solve())
-    #
-    #
-    # print("testing node_method with 3x3 array")
-    # print("-------------------------------------")
