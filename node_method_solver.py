@@ -17,7 +17,7 @@ class NodeMethod():
     def __init__(self, N, vltg_src_matrix, current_sink_matrix, resistance_matrix, Vdd = 5, threshold = .0001):
          # setup
          self.vltg_src_matrix = vltg_src_matrix #boolean array to indicate whether a node is a voltage source or not
-         self.resistance_matrix = resistance_matrix #array containing adjacent resistances at every node
+         self.resistance_matrix = resistance_matrix #array containing adjacent resistances at every node, form [(u,r,d,l)]
          self.N = N
          self.voltage_matrix = np.ones((self.N, self.N)) * Vdd #need to change once we have voltage sources/actual voltage
          self.current_sink_matrix = current_sink_matrix # array containing current sink values, structured i,j in an NxN matrix
