@@ -13,7 +13,7 @@ class BuildMatrix():
     '''
     def __init__(self, N):
         self.N = N
-        self.NULL_R = 1.0 # Null resistance
+        self.NULL_R = np.inf#1.0 # Null resistance
         self.DEV = 1.0 # deviation for gaussian distribution
 
     def generate_default(self, R=5, current_val=1):
