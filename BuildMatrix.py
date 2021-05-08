@@ -11,12 +11,19 @@ class BuildMatrix():
             spacing: for 'uniform' type, indicates how often there is a voltage source
     Outputs: 4 arguments, N, vltg_src_matrix, R
     '''
-    def __init__(self, N):
+    def __init__(self, N, solve_type='node'):
         self.N = N
-        self.NULL_R = np.inf#1.0 # Null resistance
+        if solve_type == 'row':
+            self.NULL_R = np.inf#1.0 # Null resistance
+        elif solve_type == 'node':
+            self.NULL_R = 1.0;
+        else:
+            print("Not a valid solve type")
+            self.NULL_R = 1.0;
+
         self.DEV = 1.0 # deviation for gaussian distribution
 
-    def generate_default(self, R=5, current_val=1):
+    def generate_default(self, R=5, current_val=.05):
         """Create default voltage, current, and resistance array.
         Inputs: R, resistance in ohms
                 current_val, value of each current sink

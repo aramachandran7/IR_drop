@@ -1,11 +1,6 @@
 """
 DSA final project
 adi & isabel
-
-todo:
-think about AC
-implement row method
-think about (colorful!) visualizations
 """
 
 import numpy as np
@@ -67,7 +62,7 @@ class IRDropAnalysis():
 
     def compute_node_voltage(self, i,j):
         """
-        computes and returns a node voltage at a speciifc position (i,j) in matrix, given adjacent resitances & node voltages.
+        Computes and returns a node voltage at a speciifc position (i,j) in matrix, given adjacent resitances & node voltages.
         """
         # set adjacent resistances
         adj_r = list(self.resistance_matrix[i][j]) # makes a copy of list
@@ -122,24 +117,33 @@ class IRDropAnalysis():
         d = self.initialize_d(row) #find current from top and bottom, subtract current sink
 
         u[0] = 1/ (self.resistance_matrix[row][0][0]) +  1/ (self.resistance_matrix[row][0][1]) + 1/ (self.resistance_matrix[row][0][2]) + 1/ (self.resistance_matrix[row][0][3]) #set u[0] to the conductance at that node
-        print('u[0] ', u[0])
+        # print('u[0] ', u[0])
+
         for col in range(1,self.N):
-            print('numerator',-1/self.resistance_matrix[row][col][3])
-            l[i] = -1/self.resistance_matrix[row][col][3] / u[col - 1] # - (left conductance / previuos_node_total_conductance)
+            # print('numerator',-1/self.resistance_matrix[row][col][3])
+            l[col] = -1/self.resistance_matrix[row][col][3] / u[col - 1] # - (left conductance / previuos_node_total_conductance)
             G = 1/ (self.resistance_matrix[row][col][0]) +  1/ (self.resistance_matrix[row][col][1]) + 1/ (self.resistance_matrix[row][col][2]) + 1/ (self.resistance_matrix[row][col][3]) #total conductance at node
-            u[i] = G + (l[col] * 1/self.resistance_matrix[row][col][3]) #
+            u[col] = G + (l[col] * 1/self.resistance_matrix[row][col][3]) #
 
-            print("l, u: ", l,u)
-
+        print('l:', l)
+        print('u:', u)
+        print('d:', d)
         y[0] = d[0]
-        for j in range(1,self.N):
-            y[j] = d[j] - (l[j] * y[j - 1])
+        for col in range(1,self.N):
+            y[col] = d[col] - (l[col] * y[col - 1])
+        print('y:',y)
 
-        self.voltage_matrix[row][self.N-1] = y[self.N - 1] / u[self.N - 1]
+        if not self.voltage_src_matrix[row][self.N-1]:
+            self.voltage_matrix[row][self.N-1] = y[self.N - 1] / u[self.N - 1]
 
-        for k in reversed(range(self.N-1)): # (int k = N - 2; k >= 0; --k) {
+        print('final voltage in row: ', row, ' ', self.voltage_matrix[row][self.N-1])
+
+        for col in reversed(range(self.N-1)): # (int k = N - 2; k >= 0; --k) {
             # node[row * N + k].v = (y[k] + node[row * N + k + 1].v * node[row * N + k].g_r) / u[k];
-            self.voltage_matrix[row][k] = (y[k] + self.voltage_matrix[row][k+1]*(1/self.resistance_matrix[row][k][1]))/u[k]
+            if not self.voltage_src_matrix[row][col]:
+                self.voltage_matrix[row][col] = (y[col] + self.voltage_matrix[row][col+1]*(1/self.resistance_matrix[row][col][1]))/u[col]
+
+
 
 
     def solve_row_based(self):
@@ -149,7 +153,6 @@ class IRDropAnalysis():
         # double *v = new double[N*N];
         # double *d = new double[N];
         # d=0
-        threshold_reached = self.voltage_src_matrix
         # while (iterate_cnt < 100):        # for j in range(N**2): #(int j = 0; j < N*N; ++j)
         #     #     v[j] = net.node[j].v;
         #     v_last = self.voltage_matrix.copy()
@@ -164,10 +167,11 @@ class IRDropAnalysis():
         #     # if (e<1e-8) break;
         #     iterate_cnt += 1
 
+        threshold_reached = self.voltage_src_matrix
         runs = 0
 
         # while ~(np.all(threshold_reached == 1)):
-        for _ in range(3):
+        for _ in range(2):
             prev_voltage = self.voltage_matrix.copy()
 
             for row in range(self.N):
@@ -192,9 +196,11 @@ class IRDropAnalysis():
 
 if __name__ == "__main__":
 
-    size = 4
-    builder = BuildMatrix(size)
+    size = 5
+    builder = BuildMatrix(size, 'row')
     v,i,r = builder.generate_default()
+    print(v)
+
 
     ir = IRDropAnalysis(size, v,i,r)
 
