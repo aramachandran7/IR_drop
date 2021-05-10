@@ -18,20 +18,21 @@ class IRDropAnalysis():
          # self.init_matrices(voltage_src_matrix, current_sink_matrix, resistance_matrix)
 
 
-    def init_matrices(self, voltage_src_matrix, current_sink_matrix, resistance_matrix, N):
+    def init_matrices(self, voltage_src_matrix, current_sink_matrix, resistance_matrix, N, threshold):
         """
         init all matrices
         """
         self.N = N
+        self.threshold = threshold
         self.voltage_src_matrix = voltage_src_matrix #boolean array to indicate whether a node is a voltage source or not
         self.resistance_matrix = resistance_matrix #array containing adjacent resistances at every node, form [(u,r,d,l)]
         self.current_sink_matrix = current_sink_matrix # array containing current sink values, structured i,j in an NxN matrix
         self.voltage_matrix = np.ones((self.N, self.N)) * self.Vdd #need to change once we have voltage sources/actual voltage
 
 
-    def solve_row_based(self, voltage_src_matrix, current_sink_matrix, resistance_matrix, N = -1):
+    def solve_row_based(self, voltage_src_matrix, current_sink_matrix, resistance_matrix, N = -1, threshold=-1):
 
-        self.init_matrices(voltage_src_matrix, current_sink_matrix, resistance_matrix, N = (self.N if N==-1 else N))
+        self.init_matrices(voltage_src_matrix, current_sink_matrix, resistance_matrix, N = (self.N if N==-1 else N), threshold = (self.threshold if threshold==-1 else threshold))
 
         threshold_reached = self.voltage_src_matrix
         runs = 0
@@ -61,13 +62,13 @@ class IRDropAnalysis():
 
         return self.voltage_matrix
 
-    def solve_node_based(self, voltage_src_matrix, current_sink_matrix, resistance_matrix, N = -1):
+    def solve_node_based(self, voltage_src_matrix, current_sink_matrix, resistance_matrix, N = -1, threshold=-1):
         """
         Returns node voltage at every node, by iterating through entire matrix N times until a threshold level of
         precision is reached at all node voltages.
         """
 
-        self.init_matrices(voltage_src_matrix, current_sink_matrix, resistance_matrix, N = (self.N if N==-1 else N))
+        self.init_matrices(voltage_src_matrix, current_sink_matrix, resistance_matrix, N = (self.N if N==-1 else N),threshold = (self.threshold if threshold==-1 else threshold))
 
 
         # set up looping

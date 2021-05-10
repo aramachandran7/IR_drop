@@ -6,6 +6,7 @@ Implement timeit to test node and row method against eachother.
 import pytest
 import timeit
 import matplotlib.pyplot as plt
+from numpy import arange
 
 
 from IR_solver import IRDropAnalysis
@@ -16,25 +17,52 @@ from visuals import Visual
 SMALLEST_MAT = 10
 
 
-def compare(max_size=25, case_type='default'):
+def compare(max_size=25, max_threshold=.01, case_type='default'):
     # determine average time to reach threshold from
     max_size += 1
     # generating test cases
-    test_cases_1, test_cases_inf = generate_test_cases(max_size=max_size, case_type=case_type)
+    test_cases_1, test_cases_inf = generate_size_test_cases(max_size=max_size, case_type=case_type)
+
+    t_test_cases_1, t_test_cases_inf, thresholds = generate_threshold_test_cases(max_threshold)
+
 
     node_method_results = []
     ir = IRDropAnalysis(3)
     # run timeit
     for test_case in test_cases_1:
-        t = timeit.Timer('ir.solve_node_based(*test_case)', 'from IR_solver import IRDropAnalysis', globals = locals())
+        t = timeit.Timer('run = ir.solve_node_based(*test_case)', 'from IR_solver import IRDropAnalysis', globals = locals())
         node_method_results.append(t.timeit(10))
 
-    plot_results(node_method_results, max_size)
+    threshold_results = []
+    for test_case in t_test_cases_1:
+        t = timeit.Timer('run = ir.solve_node_based(*test_case)', 'from IR_solver import IRDropAnalysis', globals = locals())
+        threshold_results.append(t.timeit(10))
+
+    plot_results(node_method_results, thresholds, threshold_results, max_size)
 
 
 
+def generate_threshold_test_cases(max_threshold, case_type = "default"):
 
-def generate_test_cases(max_size, case_type = "default"):
+    # generate spaced thresholds to test
+    thresholds = arange(0 + max_threshold/50, max_threshold + max_threshold/50, max_threshold/50)
+
+    MATRIX_SIZE = 20
+    test_cases_1 = []
+    test_cases_inf = []
+
+    # walk through all thresholds, creating args
+
+    builder = BuildMatrix(MATRIX_SIZE)
+
+    for t in thresholds:
+        v,i,r_1, r_inf = builder.generate_custom(builder.build_voltage_uniform, builder.build_current_dist, builder.build_resistance_cluster)
+        test_cases_1.append((v,i,r_1, MATRIX_SIZE, t))
+        test_cases_inf.append((v,i,r_inf, MATRIX_SIZE, t))
+
+    return test_cases_1, test_cases_inf, thresholds
+
+def generate_size_test_cases(max_size, case_type = "default"):
     test_cases_1 = []
     test_cases_inf = []
 
@@ -65,19 +93,35 @@ def generate_test_cases(max_size, case_type = "default"):
 
     return test_cases_1, test_cases_inf
 
-def plot_results(results, max_size):
+def plot_results(results, thresholds, threshold_results,max_size):
     indices = [i**2 for i in range(SMALLEST_MAT, max_size)]
 
     plt.plot(indices, results, 'rs', label="results")
     # plt.plot(x,default_results,'g^', label="default sort results")
     # plt.yscale('log')
-    plt.title('Node Method Compute times')
+    plt.title('Node Method Compute Times')
     plt.xlabel('Matrix size')
-    plt.ylabel('Time to compute')
+    plt.ylabel('Time to solve entire matrix (seconds)')
     plt.legend(loc="upper left")
     plt.show(block=True)
 
-    # TODO: time per node?
+    time_per_node = []
+    for i in range(len(results)):
+        time_per_node.append(results[i]/indices[i])
+
+    plt.plot(indices, time_per_node, 'rs', label="results")
+    plt.title('Computation Time per Node for Node Method')
+    plt.xlabel('Matrix size')
+    plt.ylabel('Computation Time per Node (seconds)')
+    plt.legend(loc="upper left")
+    plt.show(block=True)
+
+    plt.plot(thresholds, threshold_results, 'rs', label="results")
+    plt.title('Total compute time as a function of error Threshold Setting')
+    plt.xlabel('Error Threshold Setting')
+    plt.ylabel('Time to solve entire matrix (seconds)')
+    plt.legend(loc="upper left")
+    plt.show(block=True)
 
     # plt.plot(x,default_results,'g^', label="default sort results")
     # # plt.yscale('log')
@@ -117,5 +161,5 @@ def general_test():
     print('\n')
 
 if __name__ == "__main__":
-    # compare(max_size=30, case_type='complex')
-    general_test()
+    compare(max_size=15,  max_threshold=.01, case_type='complex')
+    # general_test()
