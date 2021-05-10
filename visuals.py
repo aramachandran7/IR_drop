@@ -23,13 +23,32 @@ class Visual(object):
 
         plt.imshow(mat, cmap=self.color_scheme, interpolation='nearest')
         plt.title('Voltage Matrix heatmap')
-        plt.show(block=True)
+        plt.show() # block=True
+
+    def visualize_source_voltage(self, mat):
+        # use source voltage matrix to create simple binary
+
+        plt.imshow(mat, cmap=self.color_scheme, interpolation='nearest')
+        plt.title('Voltage Source Locations') # TODO: test wiht cornerns rename title easy
+        plt.show()
+
+
 
     def visulaize_current(self, mat):
         pass
 
-    def visulaize_resistance(self, mat):
-        pass
+    def visualize_resistance(self, mat):
+        """ Particularly useful for visualizing clusters"""
+        if mat.min() < 0:
+            # shift entire mat up
+            mat += mat.min()
+
+        mat *= 1.0/mat.max()
+
+        plt.imshow(mat, cmap=self.color_scheme, interpolation='nearest')
+        plt.title('Resistance heatmap (higher is darker?)')
+        plt.show() # block=True
+
 
 if __name__ == "__main__":
     pass

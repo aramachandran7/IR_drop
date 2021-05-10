@@ -9,20 +9,63 @@ from BuildMatrix import BuildMatrix
 from visuals import Visual
 
 class IRDropAnalysis():
-    def __init__(self, N, voltage_src_matrix, current_sink_matrix, resistance_matrix, Vdd = 5, threshold = .0001):
+    def __init__(self, N, Vdd = 5, threshold = .0001): # voltage_src_matrix, current_sink_matrix, resistance_matrix,
          # setup
-         self.voltage_src_matrix = voltage_src_matrix #boolean array to indicate whether a node is a voltage source or not
-         self.resistance_matrix = resistance_matrix #array containing adjacent resistances at every node, form [(u,r,d,l)]
          self.N = N
-         self.voltage_matrix = np.ones((self.N, self.N)) * Vdd #need to change once we have voltage sources/actual voltage
-         self.current_sink_matrix = current_sink_matrix # array containing current sink values, structured i,j in an NxN matrix
+         self.Vdd = Vdd
          self.threshold = threshold #value to determine whether a voltage has settled or not, << 1
+         # self.init_matrices(voltage_src_matrix, current_sink_matrix, resistance_matrix)
 
-    def solve_node_based(self):
+
+    def init_matrices(self, voltage_src_matrix, current_sink_matrix, resistance_matrix, N):
+        """
+        init all matrices
+        """
+        self.N = N
+        self.voltage_src_matrix = voltage_src_matrix #boolean array to indicate whether a node is a voltage source or not
+        self.resistance_matrix = resistance_matrix #array containing adjacent resistances at every node, form [(u,r,d,l)]
+        self.current_sink_matrix = current_sink_matrix # array containing current sink values, structured i,j in an NxN matrix
+        self.voltage_matrix = np.ones((self.N, self.N)) * self.Vdd #need to change once we have voltage sources/actual voltage
+
+
+    def solve_row_based(self, voltage_src_matrix, current_sink_matrix, resistance_matrix, N = -1):
+
+        self.init_matrices(voltage_src_matrix, current_sink_matrix, resistance_matrix, N = (self.N if N==-1 else N))
+
+        threshold_reached = self.voltage_src_matrix
+        runs = 0
+
+        # while ~(np.all(threshold_reached == 1)):
+        for _ in range(2):
+            prev_voltage = self.voltage_matrix.copy()
+
+            for row in range(self.N):
+                self.solve_row(row)
+
+                for j in range(self.N): # check threshold reached
+                    if abs(self.voltage_matrix[row][j] - prev_voltage[row][j]) < self.threshold:
+                        threshold_reached[row][j] = 1
+
+            # Logging to stdout code
+            # print(self.voltage_matrix)
+            runs += 1
+            if (runs % 100 == 0):
+                print('completed run ', runs)
+                temp_inverse = np.invert(threshold_reached)
+                print('nodes left to reach threshold: ', np.sum(temp_inverse), '/', self.N*self.N)
+
+        print('total runs: ', runs)
+
+        return self.voltage_matrix
+
+    def solve_node_based(self, voltage_src_matrix, current_sink_matrix, resistance_matrix, N = -1):
         """
         Returns node voltage at every node, by iterating through entire matrix N times until a threshold level of
         precision is reached at all node voltages.
         """
+
+        self.init_matrices(voltage_src_matrix, current_sink_matrix, resistance_matrix, N = (self.N if N==-1 else N))
+
 
         # set up looping
         threshold_reached = self.voltage_src_matrix
@@ -89,25 +132,8 @@ class IRDropAnalysis():
         return final_node_voltage
 
 
-    def initialize_d(self, row):
-        d = np.zeros(self.N)
-        if row == 0:
-            for i in range(self.N):
-                # d[i] = (node[(row + 1) * N + i].g_d * node[(row + 1) * N + i].v) - node[row * N + i].i;
-                d[i] = (1/self.resistance_matrix[row][i][2])*self.voltage_matrix[row][i] - self.current_sink_matrix[row][i]
-        elif row == self.N - 1:
-            for i in range(self.N):
-                # d[i] = (node[(row - 1) * N + i].g_u * node[(row - 1) * N + i].self.voltage_matrix) - node[row * N + i].i;
-                d[i] = (1/self.resistance_matrix[row][i][0])*self.voltage_matrix[row][i] - self.current_sink_matrix[row][i]
-        else:
-            for i in range(self.N):
-                d[i] = (1/self.resistance_matrix[row][i][2])*self.voltage_matrix[row][i] + (1/self.resistance_matrix[row][i][0])*self.voltage_matrix[row][i] - self.current_sink_matrix[row][i]
-                # d[i] = (node[(row + 1) * N + i].g_d * node[(row + 1) * N + i].v) +
-                #         (node[(row - 1) * N + i].g_u * node[(row - 1) * N + i].v) - node[row * N + i].i;
-
-        return d
-
     def solve_row(self, row):
+        """ Solve individual row of matrix, for row method """
         # assert(row > 1 or row < self.N - 1); # confirm row isn't first or last row
         u = np.zeros(self.N) # list of doubles. conductances
         l = np.zeros(self.N) #
@@ -125,89 +151,48 @@ class IRDropAnalysis():
             G = 1/ (self.resistance_matrix[row][col][0]) +  1/ (self.resistance_matrix[row][col][1]) + 1/ (self.resistance_matrix[row][col][2]) + 1/ (self.resistance_matrix[row][col][3]) #total conductance at node
             u[col] = G + (l[col] * 1/self.resistance_matrix[row][col][3]) #
 
-        print('l:', l)
-        print('u:', u)
-        print('d:', d)
         y[0] = d[0]
         for col in range(1,self.N):
             y[col] = d[col] - (l[col] * y[col - 1])
-        print('y:',y)
 
         if not self.voltage_src_matrix[row][self.N-1]:
             self.voltage_matrix[row][self.N-1] = y[self.N - 1] / u[self.N - 1]
 
-        print('final voltage in row: ', row, ' ', self.voltage_matrix[row][self.N-1])
+        # print('l:', l)
+        # print('u:', u)
+        # print('d:', d)
+        # print('y:',y)
+        # print('final voltage in row: ', row, ' ', self.voltage_matrix[row][self.N-1])
 
         for col in reversed(range(self.N-1)): # (int k = N - 2; k >= 0; --k) {
             # node[row * N + k].v = (y[k] + node[row * N + k + 1].v * node[row * N + k].g_r) / u[k];
             if not self.voltage_src_matrix[row][col]:
                 self.voltage_matrix[row][col] = (y[col] + self.voltage_matrix[row][col+1]*(1/self.resistance_matrix[row][col][1]))/u[col]
 
+    def initialize_d(self, row):
+        """ Helper function for row method"""
+        d = np.zeros(self.N)
+        if row == 0:
+            for i in range(self.N):
+                # d[i] = (node[(row + 1) * N + i].g_d * node[(row + 1) * N + i].v) - node[row * N + i].i;
+                d[i] = (1/self.resistance_matrix[row][i][2])*self.voltage_matrix[row][i] - self.current_sink_matrix[row][i]
+        elif row == self.N - 1:
+            for i in range(self.N):
+                # d[i] = (node[(row - 1) * N + i].g_u * node[(row - 1) * N + i].self.voltage_matrix) - node[row * N + i].i;
+                d[i] = (1/self.resistance_matrix[row][i][0])*self.voltage_matrix[row][i] - self.current_sink_matrix[row][i]
+        else:
+            for i in range(self.N):
+                d[i] = (1/self.resistance_matrix[row][i][2])*self.voltage_matrix[row][i] + (1/self.resistance_matrix[row][i][0])*self.voltage_matrix[row][i] - self.current_sink_matrix[row][i]
+                # d[i] = (node[(row + 1) * N + i].g_d * node[(row + 1) * N + i].v) +
+                #         (node[(row - 1) * N + i].g_u * node[(row - 1) * N + i].v) - node[row * N + i].i;
 
+        return d
 
-
-    def solve_row_based(self):
-        # iterate_cnt = 0;
-        # Net net(self.N) ;
-        # double e = 0;
-        # double *v = new double[N*N];
-        # double *d = new double[N];
-        # d=0
-        # while (iterate_cnt < 100):        # for j in range(N**2): #(int j = 0; j < N*N; ++j)
-        #     #     v[j] = net.node[j].v;
-        #     v_last = self.voltage_matrix.copy()
-        #
-        #     for row in range(self.N):#(int i = 0; i < N; ++i) {
-        #         SolvingOneRow(row)
-        #
-        #     # e=mse(net.node,v);
-        #     # std::cout <<e
-        #     #           << "\n";
-        #     # iterate_cnt+= 1
-        #     # if (e<1e-8) break;
-        #     iterate_cnt += 1
-
-        threshold_reached = self.voltage_src_matrix
-        runs = 0
-
-        # while ~(np.all(threshold_reached == 1)):
-        for _ in range(2):
-            prev_voltage = self.voltage_matrix.copy()
-
-            for row in range(self.N):
-                self.solve_row(row)
-
-                for j in range(self.N): # check threshold reached
-                    if abs(self.voltage_matrix[row][j] - prev_voltage[row][j]) < self.threshold:
-                        threshold_reached[row][j] = 1
-
-            # Logging to stdout code
-            print(self.voltage_matrix)
-            runs += 1
-            if (runs % 100 == 0):
-                print('completed run ', runs)
-                temp_inverse = np.invert(threshold_reached)
-                print('nodes left to reach threshold: ', np.sum(temp_inverse), '/', self.N*self.N)
-
-        print('total runs: ', runs)
-
-        return self.voltage_matrix
 
 
 if __name__ == "__main__":
+    pass
 
-    size = 5
-    builder = BuildMatrix(size, 'row')
-    v,i,r = builder.generate_default()
-    print(v)
-
-
-    ir = IRDropAnalysis(size, v,i,r)
-
-    solved_v = ir.solve_row_based()
-
-    print(solved_v)
-    print('\n')
     # v,i,r = builder.generate_default(.1, 1)
     #
     # node_method = NodeMethod(size,v,i,r, threshold=.001)

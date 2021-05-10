@@ -3,6 +3,7 @@ Class to build matrices
 """
 import numpy as np
 import random
+from visuals import Visual
 
 class BuildMatrix():
     ''' Builds test cases
@@ -11,16 +12,9 @@ class BuildMatrix():
             spacing: for 'uniform' type, indicates how often there is a voltage source
     Outputs: 4 arguments, N, vltg_src_matrix, R
     '''
-    def __init__(self, N, solve_type='node'):
+    def __init__(self, N):
         self.N = N
-        if solve_type == 'row':
-            self.NULL_R = np.inf#1.0 # Null resistance
-        elif solve_type == 'node':
-            self.NULL_R = 1.0;
-        else:
-            print("Not a valid solve type")
-            self.NULL_R = 1.0;
-
+        self.NULL_R = np.inf
         self.DEV = 1.0 # deviation for gaussian distribution
 
     def generate_default(self, R=5, current_val=.05):
@@ -30,8 +24,17 @@ class BuildMatrix():
         """
         v = self.build_voltage_corners()
         i = self.build_current_uniform(v, current_val)
-        r = self.build_resistance_uniform(R)
-        return v, i, r
+        r_1 = self.build_resistance_uniform(R=R, NULL_R = 1.0)
+        r_inf = self.build_resistance_uniform(R=R, NULL_R = np.inf)
+        return v, i, r_1, r_inf
+
+    def generate_custom(self, v_func, i_func, r_func):
+        v = v_func()
+        i = i_func(v)
+        r_1 = r_func(NULL_R = 1.0)
+        r_inf = r_func(NULL_R = np.inf)
+
+        return v, i, r_1, r_inf
 
 
     def build_voltage_random(self):
@@ -39,7 +42,7 @@ class BuildMatrix():
         vltg_src_matrix = np.random.randint(2, size=(self.N,self.N), dtype=np.bool)
         return vltg_src_matrix
 
-    def build_voltage_uniform(self, spacing=2):
+    def build_voltage_uniform(self, spacing=6):
         """Creates a voltage matrix that is a grid with with voltage nodes spaced apart as vertically and horizontally (not on the diagonal)
         Input: spacing, an int defining the space in between two nodes
         Ex:
@@ -93,11 +96,46 @@ class BuildMatrix():
 
         return vltg_src_matrix
 
+    def build_current_uniform(self, vltg_src_matrix, current_val=1):
+        """Create a current source matrix with equivalent current values"""
+        sinks = np.invert(vltg_src_matrix)
+        current_sink_matrix = sinks * current_val
+        return current_sink_matrix
 
-    def build_resistance_uniform(self, R=5):
+    def build_current_random(self, vltg_src_matrix, max=1):
+        """Create a current source matrix with random current values between 0 and the maximum
+        Input: vltg_src_matrix, the voltage source matrix for the graph
+               max: the maximum current value
+        """
+        sinks = np.invert(vltg_src_matrix)
+        rands = np.random.rand(self.N, self.N)
+        current_sink_matrix = sinks * rands * max
+        return current_sink_matrix
+
+    def build_current_dist(self, vltg_src_matrix, currents : list = [1, .5, .25, .15], distribution: list = [.05, .20, .60, .15]):
+        """Create current source matrix from current values given in currents with distribution
+        Inputs: currents, a list of each current value that should be present in the final matrix, in amps
+                distribution, a list containing the percentage value that each current value should be present in the matrix
+        """
+        sinks = np.invert(vltg_src_matrix)
+
+        list_currents = []
+
+        for i, current in enumerate(currents):
+            list_currents += [current for x in range(int(distribution[i]*(self.N**2)))]
+        np.random.shuffle(list_currents)
+        current_matrix = np.resize(list_currents, (self.N, self.N))
+
+        final =  current_matrix*sinks
+
+        return final
+
+    def build_resistance_uniform(self, NULL_R = 1.0, R=5):
         """Create a resistance matrix with all resistances being the same
         Inputs: R, resistance in ohms
         """
+        self.NULL_R = NULL_R
+
         r_arr = []
         for row in range(self.N):
             r_arr.append([])
@@ -108,19 +146,22 @@ class BuildMatrix():
         return resistance_matrix
 
 
-    def build_resistance_gaussian(self, R = 5):
+    def build_resistance_gaussian(self, NULL_R = 1.0, R = 5):
         """Build a resistance matrix with all resistances being a gaussian distribution around R
         Inputs: R, resistance in ohms, the average value of each of the edges
         """
+        self.NULL_R = NULL_R
+
         r_arr = self.normal_resistance_distribution(R, DEV_SMALL_BOOLEAN=False)
 
         return np.array(r_arr)
 
-    def build_resistance_cluster(self, R=5):
-        """ Builds a cluster of resistances
-
-
+    def build_resistance_cluster(self, NULL_R = 1.0, R=5):
+        """ Builds out a randomized resistance matrix, where there exist 'clusters' of equally low resistances,
+        overlayed uptop a gaussian distribution of high resistances.
         """
+        self.NULL_R = NULL_R
+
         r_arr = self.normal_resistance_distribution(R, DEV_SMALL_BOOLEAN=True)
 
         # generate random cluster corners & sizes based on normal distribution around optimal cluster size & number
@@ -134,18 +175,32 @@ class BuildMatrix():
         print('cluster_number', cluster_number)
 
         clusters = []
-        for i in range(cluster_number):
-            side_length = int(np.random.normal(cluster_sidelength*self.N, cluster_sidelength*self.N*.4))
-            if side_length == 0:
-                side_length += 1
+        retry = True
 
-            # generate and check top left corner
-            corner = (random.randint(0,self.N-1), random.randint(0,self.N-1))
+        while retry:
+            retry = False
+            for i in range(cluster_number):
+                side_length = int(np.random.normal(cluster_sidelength*self.N, cluster_sidelength*self.N*.4))
+                if side_length == 0:
+                    side_length += 1
 
-            while self.overlap(corner, side_length, clusters): # if theres overlap return true
+                # generate and check top left corner
                 corner = (random.randint(0,self.N-1), random.randint(0,self.N-1))
 
-            clusters.append((corner,side_length))
+                checker = 0
+                while self.overlap(corner, side_length, clusters): # if theres overlap return true
+                    corner = (random.randint(0,self.N-1), random.randint(0,self.N-1))
+                    checker += 1
+                    print('checker: ', checker)
+                    if checker>100:
+                        # stuck in a loop! reset and break
+                        break
+
+                if checker >100:
+                    retry = True
+                    clusters = []
+                    break
+                clusters.append((corner,side_length))
 
         print('clusters:\n', clusters)
         self.visualize_clusters(clusters)
@@ -177,41 +232,8 @@ class BuildMatrix():
 
         return resistance_matrix
 
-    def build_current_uniform(self, vltg_src_matrix, current_val=1):
-        """Create a current source matrix with equivalent current values"""
-        sinks = np.invert(vltg_src_matrix)
-        current_sink_matrix = sinks * current_val
-        return current_sink_matrix
-
-    def build_current_rand(self, vltg_src_matrix, max):
-        """Create a current source matrix with random current values between 0 and the maximum
-        Input: vltg_src_matrix, the voltage source matrix for the graph
-               max: the maximum current value
-        """
-        sinks = np.invert(vltg_src_matrix)
-        rands = np.random.rand(self.N, self.N)
-        current_sink_matrix = sinks * rands * max
-        return current_sink_matrix
-
-    def build_current_dist(self, vltg_src_matrix, currents : list, distribution: list):
-        """Create current source matrix from current values given in currents with distribution
-        Inputs: currents, a list of each current value that should be present in the final matrix, in amps
-                distribution, a list containing the percentage value that each current value should be present in the matrix
-        """
-        sinks = np.invert(vltg_src_matrix)
-
-        list_currents = []
-
-        for i, current in enumerate(currents):
-            list_currents += [current for x in range(int(distribution[i]*(self.N**2)))]
-        np.random.shuffle(list_currents)
-        current_matrix = np.resize(list_currents, (self.N, self.N))
-
-        final =  current_matrix*sinks
-
-        return final
-
     def normal_resistance_distribution(self, R, DEV_SMALL_BOOLEAN=False):
+        """ resistance normal distribution helper function"""
         if DEV_SMALL_BOOLEAN:
             self.DEV /= 3.0
 
@@ -247,6 +269,9 @@ class BuildMatrix():
                     arr[row][col] = 1
 
         print('CLUSTERS, MAPPED\n', arr)
+        vis = Visual()
+        vis.visualize_resistance(arr)
+
 
     def overlap(self, corner, side_length, clusters):
         # return true if there is any of (overlap with another cluster at all, or out of bounds at all), false otherwise
