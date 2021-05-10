@@ -156,7 +156,7 @@ class BuildMatrix():
 
         return np.array(r_arr)
 
-    def build_resistance_cluster(self, NULL_R = 1.0, R=5):
+    def build_resistance_cluster(self, NULL_R = 1.0, R=5, debug=False):
         """ Builds out a randomized resistance matrix, where there exist 'clusters' of equally low resistances,
         overlayed uptop a gaussian distribution of high resistances.
         """
@@ -172,7 +172,8 @@ class BuildMatrix():
         LOW_R = R/3.0
 
         cluster_number = int(total_cluster_area/(cluster_sidelength**2)) # number of clusters
-        print('cluster_number', cluster_number)
+        if debug:
+            print('cluster_number', cluster_number)
 
         clusters = []
         retry = True
@@ -191,9 +192,11 @@ class BuildMatrix():
                 while self.overlap(corner, side_length, clusters): # if theres overlap return true
                     corner = (random.randint(0,self.N-1), random.randint(0,self.N-1))
                     checker += 1
-                    print('checker: ', checker)
+                    # print('checker: ', checker)
                     if checker>100:
                         # stuck in a loop! reset and break
+                        if debug:
+                            print('greater than 100, for size: ', self.N)
                         break
 
                 if checker >100:
@@ -202,8 +205,9 @@ class BuildMatrix():
                     break
                 clusters.append((corner,side_length))
 
-        print('clusters:\n', clusters)
-        self.visualize_clusters(clusters)
+        if debug:
+            print('clusters:\n', clusters)
+            self.visualize_clusters(clusters)
         # walk through all clusters, and alter resistance_matrix
         for cluster in clusters:
             # walk through all nodes, setting appropriate values to low resistances
