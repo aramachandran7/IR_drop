@@ -133,13 +133,13 @@ def plot_results(results, thresholds, threshold_results,max_size):
 
 
 def general_test():
-    size = 30
+    size = 20
     builder = BuildMatrix(size)
     ir = IRDropAnalysis(size, debug=True)
     vis = Visual()
     v,i,r_1, r_inf = builder.generate_default()
     # v,i,r_1, r_inf = builder.generate_custom(builder.build_voltage_random, builder.build_current_random, builder.build_resistance_gaussian)
-    v,i,r_1, r_inf = builder.generate_custom(builder.build_voltage_uniform, builder.build_current_dist, builder.build_resistance_cluster)
+    # v,i,r_1, r_inf = builder.generate_custom(builder.build_voltage_corners, builder.build_current_dist, builder.build_resistance_cluster)
 
     vis.visualize_source_voltage(v)
     solved_v_node = ir.solve_node_based(v, i, r_1)
