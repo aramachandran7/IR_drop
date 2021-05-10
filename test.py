@@ -99,8 +99,8 @@ def plot_results(results, thresholds, threshold_results,max_size):
     plt.plot(indices, results, 'rs', label="results")
     # plt.plot(x,default_results,'g^', label="default sort results")
     # plt.yscale('log')
-    plt.title('Node Method Compute Times')
-    plt.xlabel('Matrix size')
+    plt.title('Time to solve entire matrix via Node Method')
+    plt.xlabel('Total Nodes in Matrix')
     plt.ylabel('Time to solve entire matrix (seconds)')
     plt.legend(loc="upper left")
     plt.show(block=True)
@@ -110,17 +110,17 @@ def plot_results(results, thresholds, threshold_results,max_size):
         time_per_node.append(results[i]/indices[i])
 
     plt.plot(indices, time_per_node, 'rs', label="results")
-    plt.title('Computation Time per Node for Node Method')
-    plt.xlabel('Matrix size')
+    plt.title('Computation Time per Node via Node Method')
+    plt.xlabel('Total Nodes in Matrix')
     plt.ylabel('Computation Time per Node (seconds)')
     plt.legend(loc="upper left")
     plt.show(block=True)
 
     plt.plot(thresholds, threshold_results, 'rs', label="results")
-    plt.title('Total compute time as a function of error Threshold Setting')
+    plt.title('Time to solve entire matrix as a function of Error Threshold Setting')
     plt.xlabel('Error Threshold Setting')
     plt.ylabel('Time to solve entire matrix (seconds)')
-    plt.legend(loc="upper left")
+    plt.legend(loc="upper right")
     plt.show(block=True)
 
     # plt.plot(x,default_results,'g^', label="default sort results")
@@ -133,22 +133,19 @@ def plot_results(results, thresholds, threshold_results,max_size):
 
 
 def general_test():
-    size = 5
+    size = 30
     builder = BuildMatrix(size)
     ir = IRDropAnalysis(size, debug=True)
     vis = Visual()
     v,i,r_1, r_inf = builder.generate_default()
     # v,i,r_1, r_inf = builder.generate_custom(builder.build_voltage_random, builder.build_current_random, builder.build_resistance_gaussian)
-    # v,i,r_1, r_inf = builder.generate_custom(builder.build_voltage_uniform, builder.build_current_dist, builder.build_resistance_cluster)
+    v,i,r_1, r_inf = builder.generate_custom(builder.build_voltage_uniform, builder.build_current_dist, builder.build_resistance_cluster)
 
-    # vis.visualize_source_voltage(v)
-
-    print('v before\n:', v)
-    solved_v_row = ir.solve_row_based(v, i ,r_inf)
-    print('v after\n:', v)
-    v,i,r_1, r_inf = builder.generate_default()
-    print('v after\n:', v)
+    vis.visualize_source_voltage(v)
     solved_v_node = ir.solve_node_based(v, i, r_1)
+
+    vis.visualize_node_voltage(solved_v_node)
+
 
 
     # vis.visualize_node_voltage(mat = solved_v_node)
@@ -156,10 +153,10 @@ def general_test():
 
 
 
-    print('row:\n', solved_v_row)
-    print('node:\n', solved_v_node)
+    # print('row:\n', solved_v_row)
+    # print('node:\n', solved_v_node)
     print('\n')
 
 if __name__ == "__main__":
-    compare(max_size=15,  max_threshold=.01, case_type='complex')
-    # general_test()
+    # compare(max_size=40,  max_threshold=.01, case_type='complex')
+    general_test()

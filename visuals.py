@@ -46,7 +46,7 @@ class Visual(object):
         mat *= 1.0/mat.max()
 
         plt.imshow(mat, cmap=self.color_scheme, interpolation='nearest')
-        plt.title('Resistance heatmap (higher is darker?)')
+        plt.title('Clustered High and Low Resistance Distribution')
         plt.show() # block=True
 
 

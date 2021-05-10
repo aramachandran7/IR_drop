@@ -156,7 +156,7 @@ class BuildMatrix():
 
         return np.array(r_arr)
 
-    def build_resistance_cluster(self, NULL_R = 1.0, R=5, debug=False):
+    def build_resistance_cluster(self, NULL_R = 1.0, R=5, debug=True):
         """ Builds out a randomized resistance matrix, where there exist 'clusters' of equally low resistances,
         overlayed uptop a gaussian distribution of high resistances.
         """
