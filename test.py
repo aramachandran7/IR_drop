@@ -101,6 +101,7 @@ def general_test():
 
     print('v before\n:', v)
     solved_v_row = ir.solve_row_based(v, i ,r_inf)
+    print('v after\n:', v)
     v,i,r_1, r_inf = builder.generate_default()
     print('v after\n:', v)
     solved_v_node = ir.solve_node_based(v, i, r_1)

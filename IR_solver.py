@@ -140,21 +140,19 @@ class IRDropAnalysis():
     def solve_row(self, row):
         """ Solve individual row of matrix, for row method """
         # assert(row > 1 or row < self.N - 1); # confirm row isn't first or last row
-        u = np.zeros(self.N) # list of doubles. conductances
-        l = np.zeros(self.N) #
-        y = np.zeros(self.N) #
+        u = np.zeros(self.N)
+        l = np.zeros(self.N)
+        y = np.zeros(self.N)
 
-        # TODO:
         d = self.initialize_d(row) #find current from top and bottom, subtract current sink
 
-        u[0] = 1/ (self.resistance_matrix[row][0][0]) +  1/ (self.resistance_matrix[row][0][1]) + 1/ (self.resistance_matrix[row][0][2]) + 1/ (self.resistance_matrix[row][0][3]) #set u[0] to the net conductance at that node
-        # print('u[0] ', u[0])
+        #set u[0] to the net conductance at that node
+        u[0] = 1/ (self.resistance_matrix[row][0][0]) +  1/ (self.resistance_matrix[row][0][1]) + 1/ (self.resistance_matrix[row][0][2]) + 1/ (self.resistance_matrix[row][0][3])
 
         for col in range(1,self.N):
-            # print('numerator',-1/self.resistance_matrix[row][col][3])
-            l[col] = -1/self.resistance_matrix[row][col][3] / u[col - 1] # - (left conductance / previuos_node_total_conductance)
-            G = 1/ (self.resistance_matrix[row][col][0]) +  1/ (self.resistance_matrix[row][col][1]) + 1/ (self.resistance_matrix[row][col][2]) + 1/ (self.resistance_matrix[row][col][3]) #total conductance at node
-            u[col] = G + (l[col] * 1/self.resistance_matrix[row][col][3]) #
+            l[col] = -1/self.resistance_matrix[row][col][3] / u[col - 1] # -(left conductance / previuos_node_total_conductance). portion of previous conductance that is connected b/t the current node and the left node
+            G = 1/ (self.resistance_matrix[row][col][0]) +  1/ (self.resistance_matrix[row][col][1]) + 1/ (self.resistance_matrix[row][col][2]) + 1/ (self.resistance_matrix[row][col][3]) #total conductance at current node
+            u[col] = G + (l[col] * 1/self.resistance_matrix[row][col-1][1]) # conductance at the node + portion of previous conductance times left conductance
 
         y[0] = d[0]
         for col in range(1,self.N):
@@ -163,6 +161,8 @@ class IRDropAnalysis():
         if not self.voltage_src_matrix[row][self.N-1]:
             self.voltage_matrix[row][self.N-1] = y[self.N - 1] / u[self.N - 1]
 
+        if self.debug:
+            print(l)
         # print('l:', l)
         # print('u:', u)
         # print('d:', d)
@@ -175,7 +175,11 @@ class IRDropAnalysis():
                 self.voltage_matrix[row][col] = (y[col] + self.voltage_matrix[row][col+1]*(1/self.resistance_matrix[row][col][1]))/u[col]
 
     def initialize_d(self, row):
-        """ Helper function for row method"""
+        """Helper function for row method. Initializes the d matrix by calculating how much current is flowing from the nodes above and below a particular
+        node in the row. Returns d, which contains the current yet to be fulfilled by the nodes to the left and right of each node.
+            inputs: row, an int
+            output: d, a matrix contianing unsatisfied current draw of each node in a row
+        """
         d = np.zeros(self.N)
 
         if row == 0:
